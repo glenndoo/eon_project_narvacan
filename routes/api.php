@@ -20,16 +20,17 @@ Route::group(['prefix' => 'mobile',  'middleware' => 'EonMiddleware'],function()
             'as' => 'CreateEonToken',
             'uses' => 'EonController@CreateEonToken'
         ));
-        Route::get('/CreateVirtualCard', array(
-            'as' => 'CreateVirtualCard',
-            'uses' => 'EonController@CreateVirtualCard'
-        ));
+        
     });
 
     Route::group(['middleware'=> ['ApiPost']], function(){
         Route::post('/createCustomerProfile', array(
             'as' => 'createCustomerProfile',
             'uses' => 'EonController@createCustomerProfile'
+        ));
+        Route::post('/CreateVirtualCard', array(
+            'as' => 'CreateVirtualCard',
+            'uses' => 'EonController@CreateVirtualCard'
         ));
     });
     

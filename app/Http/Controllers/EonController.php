@@ -14,17 +14,20 @@ use Illuminate\Support\Str;
 use App\Model\eonCredentialsModel;
 use App\Model\eonTokenModel;
 use App\Model\eonUserModel;
+use App\Model\eonTransactionModel;
 
 class EonController extends Controller
 {
     public $eonCredentialsModel;
     public $eonTokenModel;
     public $eonUserModel;
+    public $eonTransactionModel;
 
-    public function __construct(eonCredentialsModel $eonCredentialsModel, eonTokenModel $eonTokenModel, eonUserModel $eonUserModel){
+    public function __construct(eonCredentialsModel $eonCredentialsModel, eonTokenModel $eonTokenModel, eonUserModel $eonUserModel, eonTransactionModel $eonTransactionModel){
         $this->eonCredentialsModel = $eonCredentialsModel;
         $this->eonTokenModel = $eonTokenModel;
         $this->eonUserModel = $eonUserModel;
+        $this->eonTransactionModel = $eonTransactionModel;
     }
 
     public function CreateEonToken(){
@@ -139,6 +142,7 @@ class EonController extends Controller
                 return "Message from server: ".$response->errors[0]->details->message;
             }else if($response->code == "TS"){
                 $insertData = $this->eonUserModel->SaveUserInfo($response, $UserInput);
+                $insertLog = $this->eonTransactionModel->LogTransactions($response);
                 return $insertData;
             }else{
                 return json_encode($response);
@@ -179,7 +183,7 @@ class EonController extends Controller
 
             curl_close($curl);
             if(isset($response->code) == 'TS'){
-                $insertVirtualCard = $this->eonCardModel->SaveVirtualCard($response,$request);
+                $insertVirtualCard = $this->eonTransactionModel->SaveVirtualCard($response,$request);
                 return $insertVirtualCard;
             }else{
                 return json_encode($response);

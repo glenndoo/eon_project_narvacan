@@ -18,7 +18,7 @@ class eonTransactionModel extends Model
 
     public function SaveVirtualCard($data, $request){
         // dd($data);
-        $saveVirtual = new eonUserModel;
+        $saveVirtual = new eonTransactionModel;
         $saveVirtual->eon_user_id = $data->customerId;
         $saveVirtual->eon_description = $data->description.'|Create Card|'.$data->accountNumber.'|'.$data->token.'|'.$data->apiCardNumber;
         $saveVirtual->eon_ref_id = $data->uuid;
@@ -30,7 +30,7 @@ class eonTransactionModel extends Model
     }
 
     public function LogTransactions($data){
-        $saveTransaction = new eonUserModel;
+        $saveTransaction = new eonTransactionModel;
         $saveTransaction->eon_user_id = $data->customerId;
         $saveTransaction->eon_description = $data->description.'|Create Account';
         $saveTransaction->eon_ref_id = $data->senderRefId;
