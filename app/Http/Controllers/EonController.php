@@ -132,13 +132,12 @@ class EonController extends Controller
                 'x-partner-id: '.$eonConn->eon_api_partner_id
             ),
             ));
-            $response = curl_exec($curl);
+            $response = json_decode(curl_exec($curl));
             curl_close($curl);
-            return $response;
             if(isset($response->errors[0]->code) == "TF"){
                 return "Message from server: ".$response->errors[0]->details->message;
             }else if($response->code == "TS"){
-                $insertData = $this->EonInfoModel->insertEonInfo($response, $request);
+                $insertData = $this->eonUserModel->SaveUserInfo($response, $UserInput);
                 return $insertData;
             }else{
                 return json_encode($response);
@@ -179,7 +178,7 @@ class EonController extends Controller
 
             curl_close($curl);
             if(isset($response->code) == 'TS'){
-                $insertVirtualCard = $this->eonUserModel->SaveVirtualCard($response,$request);
+                $insertVirtualCard = $this->eonCardModel->SaveVirtualCard($response,$request);
                 return $insertVirtualCard;
             }else{
                 return json_encode($response);
