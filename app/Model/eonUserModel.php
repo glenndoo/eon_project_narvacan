@@ -5,9 +5,16 @@ namespace App\Model;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
+use App\Model\eonTransactionModel;
+
 
 class eonUserModel extends Model
 {
+    public $eonTransactionModel;
+    
+    public function __construct(eonTransactionModel $eonTransactionModel){
+        $this->eonTransactionModel = $eonTransactionModel;
+    }
     protected $connection = "mysql";
 	protected $table = "eon_user_transactions";
     public $timestamps = false;
@@ -70,9 +77,10 @@ class eonUserModel extends Model
         $saveUser->eon_user_id_type = $request->idType;
         $saveUser->eon_user_id_number = $request->idNumber;
         if($saveUser->save()){
-            return "Successfully saved!";
+            $this->eonTransactionModel->LogTransactions($data, $request);
+            return "Congratulations! You have successfully created your EON UBP Account! Your user id is ".$data->customerId.". Please take note of your reference number in case of inquiries ".$data->senderRefId;
         }else{
-            return "Failed to create account";
+            return "Failed to create account. Please contact administrator.";
         }
     }
     

@@ -134,6 +134,7 @@ class EonController extends Controller
             ));
             $response = json_decode(curl_exec($curl));
             curl_close($curl);
+            // return json_encode($response);
             if(isset($response->errors[0]->code) == "TF"){
                 return "Message from server: ".$response->errors[0]->details->message;
             }else if($response->code == "TS"){
