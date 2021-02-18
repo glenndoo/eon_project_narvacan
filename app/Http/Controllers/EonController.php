@@ -66,60 +66,8 @@ class EonController extends Controller
     }
     //Create customer profile
     public function createCustomerProfile(Request $request){
-        $UserInput = Validator::make($request->all(), [
-            'firstName' => 'required',
-            'middleName' => 'required',
-            'lastName' => 'required',
-            'mothersMaidenName' => 'required',
-            'mobilePhone' => 'required',
-            'emailAddress' => 'required',
-            'gender' => 'required',
-            'title' => 'required',
-            'numberStreet' => 'required',
-            'cityTown' => 'required',
-            'provState' => 'required',
-            'postalCode' => 'required',
-            'country' => 'required',
-            'dob' => 'required',
-            'placeOfBirth' => 'required',
-            'maritalStatus' => 'required',
-            'empStatus' => 'required',
-            'natureOfWork' => 'required',
-            'companyName' => 'required',
-            'idType' => 'required',
-            'idNumber' => 'required',
-            'sourceOfFunds' => 'required',
-            'nationality' => 'required'
-        ],[
-            'firstName.required' => 'First name is required',
-            'middleName.required' => 'Middle name is required',
-            'lastName.required' => 'Last name is required',
-            'mothersMaidenName.required' => 'Maiden name of mother is required',
-            'mobilePhone.required' => 'Mobile phone number is required',
-            'emailAddress.required' => 'Email address is required',
-            'gender.required' => 'Gender is required',
-            'title.required' => 'Title is required',
-            'numberStreet.required' => 'Street address is required',
-            'cityTown.required' => 'City is required',
-            'provState.required' => 'Provincial state is required',
-            'postalCode.required' => 'Postal Code is required',
-            'country.required' => 'Country is required',
-            'dob.required' => 'Date of birth format is dd/mm/yyyy',
-            'placeOfBirth.required' => 'Place of birth is required',
-            'maritalStatus.required' => 'Marital Status is required',
-            'empStatus.required' => 'Employment status is required',
-            'natureOfWork.required' => 'Nature of wokr is required',
-            'companyName.required' => 'Company name is required',
-            'idType.required' => 'ID type is required',
-            'idNumber.required' => 'ID number is required',
-            'sourceOfFunds.required' => 'Source of funds is required',
-            'nationality.required' => 'Nationality is required',
-            
-        ]);
+        $UserInput = json_decode($request->getContent());
 
-        if($UserInput->fails()){
-            return $UserInput->errors();
-        }
         $eonConn = $this->eonCredentialsModel->where('eon_api_name','=','EON')->first();
         $token = $this->EstablishTokens();
         
@@ -143,38 +91,37 @@ class EonController extends Controller
                 "senderRefId": "SQ'.rand(pow(10, $digits-1), pow(10, $digits)-1).'",
                 "tranRequestDate": "'.$date.'",
                 "name": {
-                    "first": "'.$request->firstName.'",
-                    "middle": "'.$request->middleName.'",
-                    "last": "'.$request->lastName.'"
+                    "first": "'.$UserInput->name->first.'",
+                    "middle": "'.$UserInput->name->middle.'",
+                    "last": "'.$UserInput->name->last.'"
                 },
                 "customerCategory": "NORM",
-                "mothersMaidenName": "'.$request->mothersMaidenName.'",
-                "mobileNumber": "'.$request->mobilePhone.'",
-                "email": "'.$request->emailAddress.'",
-                "gender": "'.$request->gender.'",
-                "nic": "551234",
-                "title": "'.$request->title.'",
+                "mothersMaidenName": "'.$UserInput->mothersMaidenName.'",
+                "mobileNumber": "'.$UserInput->mobileNumber.'",
+                "email": "'.$UserInput->email.'",
+                "gender": "'.$UserInput->gender.'",
+                "title": "'.$UserInput->title.'",
                 "presentAddress": {
-                    "line1": "'.$request->numberStreet.'",
+                    "line1": "'.$UserInput->presentAddress->line1.'",
                     "line2": "",
                     "line3": "",
-                    "city": "'.$request->cityTown.'",
-                    "province": "'.$request->provState.'",
-                    "postalCode": '.$request->postalCode.',
-                    "country": "'.$request->country.'"
+                    "city": "'.$UserInput->presentAddress->city.'",
+                    "province": "'.$UserInput->presentAddress->province.'",
+                    "postalCode": '.$UserInput->presentAddress->postalCode.',
+                    "country": "'.$UserInput->presentAddress->country.'"
                 },
-                "birthDate": "'.$request->dob.'",
-                "birthPlace": "'.$request->placeOfBirth.'",
-                "civilStatus": "'.$request->maritalStatus.'",
-                "sourceOfFund": "'.$request->sourceOfFunds.'",
+                "birthDate": "'.$UserInput->birthDate.'",
+                "birthPlace": "'.$UserInput->birthPlace.'",
+                "civilStatus": "'.$UserInput->civilStatus.'",
+                "sourceOfFund": "'.$UserInput->sourceOfFund.'",
                 "employment": {
-                    "status": "'.$request->empStatus.'",
-                    "natureOfWork": "'.$request->natureOfWork.'",
-                    "companyName": "'.$request->employer.'"
+                    "status": "'.$UserInput->employment->status.'",
+                    "natureOfWork": "'.$UserInput->employment->natureOfWork.'",
+                    "companyName": "'.$UserInput->employment->companyName.'"
                 },
-                "nationality": "'.$request->nationality.'",
-                "idType": "'.$request->idType.'",
-                "idNumber": "'.$request->idNumber.'"
+                "nationality": "'.$UserInput->nationality.'",
+                "idType": "'.$UserInput->idType.'",
+                "idNumber": "'.$UserInput->idNumber.'"
             }',
             CURLOPT_HTTPHEADER => array(
                 'accept: application/json',
@@ -185,8 +132,9 @@ class EonController extends Controller
                 'x-partner-id: '.$eonConn->eon_api_partner_id
             ),
             ));
-            $response = json_decode(curl_exec($curl));
+            $response = curl_exec($curl);
             curl_close($curl);
+            return $response;
             if(isset($response->errors[0]->code) == "TF"){
                 return "Message from server: ".$response->errors[0]->details->message;
             }else if($response->code == "TS"){
@@ -333,7 +281,7 @@ class EonController extends Controller
         if($current->toDateTimeString() < $token->eon_token_expiry){
 
         }else{
-            $token = "";
+            return "Token expired";
         }
         return $token;
     }
