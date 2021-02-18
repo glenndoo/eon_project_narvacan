@@ -20,7 +20,14 @@ Route::group(['prefix' => 'mobile',  'middleware' => 'EonMiddleware'],function()
             'as' => 'CreateEonToken',
             'uses' => 'EonController@CreateEonToken'
         ));
-        
+        Route::get('/FetchAllCards', array(
+            'as' => 'FetchAllCards',
+            'uses' => 'EonController@FetchAllCards'
+        ));
+        Route::get('/AdditionalDetails', array(
+            'as' => 'AdditionalDetails',
+            'uses' => 'EonController@AdditionalDetails'
+        ));
     });
 
     Route::group(['middleware'=> ['ApiPost']], function(){
@@ -31,6 +38,14 @@ Route::group(['prefix' => 'mobile',  'middleware' => 'EonMiddleware'],function()
         Route::post('/CreateVirtualCard', array(
             'as' => 'CreateVirtualCard',
             'uses' => 'EonController@CreateVirtualCard'
+        ));
+        Route::post('/ActivateEonCard', array(
+            'as' => 'ActivateEonCard',
+            'uses' => 'EonController@ActivateEonCard'
+        ));
+        Route::post('/PullUserDetails', array(
+            'as' => 'PullUserDetails',
+            'uses' => 'EonController@PullUserDetails'
         ));
     });
     

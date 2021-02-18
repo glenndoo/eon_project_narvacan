@@ -60,12 +60,22 @@ class EonController extends Controller
         if($response->access_token){
             $EndTime = date('Y-m-d H:i:s',strtotime($now.'+ '.$response->expires_in.' second'));
             $insertToken = $this->eonTokenModel->where('eon_token_name','=','Eon UBP')->update(['eon_token_token' => $response->access_token, 'eon_token_expiry' => $EndTime, 'eon_token_creation' => $now->toDateTimeString()]);
-            return "Token created successfully!";
+            return response(json_encode("Token created successfully!"));
         }else{
-            return "Cannot create token";
+            return response(json_encode("Cannot create token"));
         }
 
   
+    }
+
+    public function PullUserDetails(Request $request){
+        $UserRecord = $this->eonUserModel->where('eon_user_mobile','=',$request->mobileNumber)->where('eon_user_email','=',$request->email)->first();
+
+        if($UserRecord){
+            return response(json_encode($UserRecord));
+        }else{
+            return response(json_encode("User not found"));
+        }
     }
     //Create customer profile
     public function createCustomerProfile(Request $request){
@@ -77,6 +87,7 @@ class EonController extends Controller
         $date = Carbon::now();
         // dd($date);
         $digits = 6;
+        $refId = rand(pow(10, $digits-1), pow(10, $digits)-1);
         // dd($Details);
 
         $curl = curl_init();
@@ -91,7 +102,7 @@ class EonController extends Controller
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS =>'{
-                "senderRefId": "SQ'.rand(pow(10, $digits-1), pow(10, $digits)-1).'",
+                "senderRefId": "SQ'.$refId.'",
                 "tranRequestDate": "'.$date.'",
                 "name": {
                     "first": "'.$UserInput->name->first.'",
@@ -143,13 +154,14 @@ class EonController extends Controller
             }else if($response->code == "TS"){
                 $insertData = $this->eonUserModel->SaveUserInfo($response, $UserInput);
                 $insertLog = $this->eonTransactionModel->LogTransactions($response);
-                return $insertData;
+                return response(json_encode($insertData));
             }else{
-                return json_encode($response);
+                return response(json_encode($response));
             }
     }
     
     public function CreateVirtualCard(Request $request){
+        $CustomerID = $request->CustomerID;
         $eonConn = $this->eonCredentialsModel->where('eon_api_name','=','EON')->first();
         $token = $this->EstablishTokens();
         // dd($token);
@@ -166,7 +178,7 @@ class EonController extends Controller
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POSTFIELDS =>'{
-                "customerId": "2892178",
+                "customerId": "'.$CustomerID.'",
                 "productType": "PRD9183"
             }',
             CURLOPT_HTTPHEADER => array(
@@ -186,10 +198,10 @@ class EonController extends Controller
                 $insertVirtualCard = $this->eonTransactionModel->SaveVirtualCard($response,$request);
                 return $insertVirtualCard;
             }else{
-                return json_encode($response);
+                return response(json_encode($response));
             }
         }else{
-            return "Token expired";
+            return response(json_encode("Token expired"));
         }
 
     }
@@ -222,9 +234,56 @@ class EonController extends Controller
         curl_close($curl);
         echo $response;
     }
+    
 
-    public function ActivateEonCard(){
-        $eonConn = $this->AccApiCredentailsModel->where('ApiAccname','=','EON')->first();
+    public function FetchAllCards(Request $request){
+        $eonConn = $this->eonCredentialsModel->where('eon_api_name','=','EON')->first();
+        $clientID = $request->clientID;
+        
+        $curl = curl_init();
+
+        curl_setopt_array($curl, array(
+        CURLOPT_URL => $eonConn->eon_api_base_url.'partners/eon/wallet/v1/customers/'.$clientID.'/cards',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+            'accept: application/json',
+            'x-ibm-client-id: '.$eonConn->eon_api_client_id,
+            'x-ibm-client-secret: '.$eonConn->eon_api_secret,
+            'x-partner-id: '.$eonConn->eon_api_partner_id,
+            'Content-Type: application/json'
+        ),
+        ));
+
+        $response = json_decode(curl_exec($curl));
+
+        curl_close($curl);
+        $x = 0;
+        $allCards[] = "";
+        $countMe = array($response);
+        // return json_encode($response);
+        foreach($response->cards[$x] as $dig){
+            $allCards[$x] = ['Last Four Digits' => $response->cards[$x]->lastFourDigits, "Account Number" => $response->cards[$x]->account->number, "Available Balance" => $response->cards[$x]->account->availableBalance, "Current Balance" => $response->cards[$x]->account->currentBalance, "Card Token" => $response->cards[$x]->token ];
+            $x++;
+        }
+
+        return response(json_encode($allCards));
+        
+        // return $response->cards->lastFourDigits;
+    }
+
+    public function ActivateEonCard(Request $request){
+        $ActivateCard = $request->cardToken;
+        $eonConn = $this->eonCredentialsModel->where('eon_api_name','=','EON')->first();
+        $token = $this->EstablishTokens();
+        $date = Carbon::now();
+        $digits = 6;
+        $refId = rand(pow(10, $digits-1), pow(10, $digits)-1);
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
@@ -237,30 +296,26 @@ class EonController extends Controller
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_CUSTOMREQUEST => 'POST',
         CURLOPT_POSTFIELDS =>'{
-            "senderRefId":"REPLACE SENDERREFID",
-            "tranRequestDate":"REPLACE TIMESTAMP"
+            "senderRefId":"'.$refId.'",
+            "tranRequestDate":"'.$date.'"
         }',
         CURLOPT_HTTPHEADER => array(
             'accept: application/json',
-            'card-token: 07b6f0e099b5d4447e1317a7b61237d4201b43ebdfe7a98e6e23d16fdc5990d44da5c04206000535ccc685468dbf266d',
-            'authorization: Bearer '.$token->ApiAccToken,
+            'card-token: '.$ActivateCard,
+            'authorization: Bearer '.$token->eon_token_token,
             'content-type: application/json',
-            'x-ibm-client-id: '.$eonConn->ClientId,
-                'x-ibm-client-secret: '.$eonConn->Secret,
-                'x-partner-id: '.$eonConn->ApiAccNo,
+            'x-ibm-client-id: '.$eonConn->eon_api_client_id,
+            'x-ibm-client-secret: '.$eonConn->eon_api_secret,
+            'x-partner-id: '.$eonConn->eon_api_partner_id,
         ),
         ));
 
-        $response = curl_exec($curl);
+        $response = json_decode(curl_exec($curl));
 
         curl_close($curl);
-        echo $response;
+        return response(json_encode($response));
 
     }
-
-
-
-    
 
     public function VerifyForCreation(Request $request){
         $Details = $this->PermanentAddressModel->join('personalinformation','personalinformation.EntityId','=','permanentaddress.entityId')
@@ -272,9 +327,9 @@ class EonController extends Controller
         if($Details){
             // $insertEonDetails = $this->EonInfoModel->saveDetails($Details);
             $details = $this->createCustomerProfile($request, $Details);
-            return $details;
+            return response(json_encode($details));
         }else{
-            return "Please check your profile details if you have completed all the fields and if your Government IDs are verified. Please contact Squidpay support right away.";
+            return response(json_encode("Please check your profile details if you have completed all the fields and if your Government IDs are verified. Please contact Squidpay support right away."));
         }
     }
 
@@ -285,9 +340,9 @@ class EonController extends Controller
         if($current->toDateTimeString() < $token->eon_token_expiry){
 
         }else{
-            return "Token expired";
+            return response(json_encode("Token expired"));
         }
-        return $token;
+        return response(json_encode($token));
     }
     // public function GetQR(Request $request)
     // {
@@ -315,7 +370,7 @@ class EonController extends Controller
       $response = curl_exec($curl);
 
       curl_close($curl);
-      return response($response);
+      return response(json_encode($response));
 
     }
 
@@ -393,7 +448,7 @@ class EonController extends Controller
             ],
         ];
 
-        return $arr;
+        return response(json_encode($arr));
     }
 }
 
